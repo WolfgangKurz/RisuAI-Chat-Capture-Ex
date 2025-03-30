@@ -58,9 +58,10 @@ main > .flex-grow > .h-full.w-full:not(.absolute) {
     border-top: 2px solid ${c0};
     background: linear-gradient(to bottom, ${c1}, ${c2});
     opacity: 0.5;
-    z-index: -1;
+    z-index: 9999;
 }
-body.capture-ex-capturing .default-chat-screen .risu-chat .flexium.chat-width > div {
+body.capture-ex-capturing .default-chat-screen .risu-chat .flexium.chat-width > div,
+body.capture-ex-capturing .default-chat-screen .risu-chat details:not(:open) > *:not(summary) {
     display: none;
 }
 body.capture-ex-capturing .default-chat-screen .risu-chat * {
