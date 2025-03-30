@@ -59,6 +59,7 @@ main > .flex-grow > .h-full.w-full:not(.absolute) {
     background: linear-gradient(to bottom, ${c1}, ${c2});
     opacity: 0.5;
     z-index: 9999;
+    pointer-events: none !important;
 }
 body.capture-ex-capturing .default-chat-screen .risu-chat .flexium.chat-width > div,
 body.capture-ex-capturing .default-chat-screen .risu-chat details:not(:open) > *:not(summary) {
@@ -66,6 +67,10 @@ body.capture-ex-capturing .default-chat-screen .risu-chat details:not(:open) > *
 }
 body.capture-ex-capturing .default-chat-screen .risu-chat * {
     box-shadow: none !important; /* html2canvas not supporting box-shadow */
+}
+.capture_ex_proxy_image {
+    display: block;
+    background-size: contain;
 }
 `;
     document.body.appendChild(style);
@@ -114,12 +119,49 @@ function takeScreenshot () {
 
         const cvs = [];
         for (let i = idxEnd; i <= idxStart; i++) { // column-reverse
+            debugger;
+            // patch for object-fit image
+            const images = [...chats[i].querySelectorAll("img")].map(r => {
+                r.__previous_display = r.style.display;
+
+                const st = window.getComputedStyle(r);
+
+                const cover = document.createElement("var");
+                cover.className = "capture_ex_proxy_image";
+                cover.style.backgroundImage = `url(${r.src})`;
+                cover.style.padding = st.padding;
+                cover.style.margin = st.margin;
+                cover.style.width = `${r.clientWidth}px`;
+                cover.style.height = `${r.clientHeight}px`;
+
+                if(st.objectFit === "cover" || st.objectFit === "contain")
+                    cover.style.backgroundSize = st.objectFit;
+
+                if (r.nextElementSibling)
+                    r.parentNode.insertBefore(cover, r.nextElementSibling);
+                else
+                    r.parentNode.appendChild(cover);
+
+                r.style.display = "none";
+                return r;
+            });
+
             const cv = await window.html2canvas(chats[i], {
                 foreignObjectRendering: false,
                 backgroundColor: bg,
             });
             cvs.push(cv);
             console.log(`Taking screenShot... ${cvs.length}/${count}`);
+
+            // revert for object-fit image
+            images.forEach(r => {
+                r.style.display = r.__previous_display;
+                delete r.__previous_display;
+
+                const el = r.previousElementSibling;
+                if (el && el.className.includes("capture_ex_proxy_image"))
+                    el.remove();
+            });
         }
         cvs.reverse();
 
