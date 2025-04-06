@@ -82,8 +82,8 @@ function flushBackdrop () {
 }
 
 const risuLib = {
-    alert (message, opt) {
-        opt ||= {};
+    alert (message, _opt) {
+        const opt = _opt ||= {};
         const o_closable = opt.closable || true;
         const o_buttons = opt.buttons || [];
         const o_callback = opt.callback;
@@ -142,8 +142,8 @@ const risuLib = {
         requestAnimationFrame(() => (wrapper.style.opacity = 1));
 
         return {
-            update (message, opt) {
-                opt ||= {};
+            update (message, _opt) {
+                const opt = _opt ||= {};
                 const o_closable = opt.closable;
                 const o_buttons = opt.buttons;
 
