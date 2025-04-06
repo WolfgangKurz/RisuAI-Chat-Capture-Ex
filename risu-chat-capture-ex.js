@@ -295,11 +295,11 @@ function takeScreenshot () {
             progress(`Taking screenShot... ${cvs.length}/${count}`);
 
             // revert for object-fit image
-            // images.forEach(r => {
-            //     r.style.display = r.__previous_display;
-            //     delete r.__previous_display;
-            // });
-            // covers.forEach(c => c.remove());
+            images.forEach(r => {
+                r.style.display = r.__previous_display;
+                delete r.__previous_display;
+            });
+            covers.forEach(c => c.remove());
         }
         cvs.reverse();
 
