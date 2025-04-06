@@ -122,12 +122,14 @@ const risuLib = {
                 content.innerHTML = ""; // simple clear
                 content.appendChild(document.createTextNode(message));
 
-                const was_closable = box.querySelector("button");
-                if (closable !== !!was_closable) {
-                    if (closable)
-                        generateCloseButton();
-                    else
-                        was_closable.remove();
+                if (closable !== undefined) {
+                    const was_closable = box.querySelector("button");
+                    if (closable !== !!was_closable) {
+                        if (closable)
+                            generateCloseButton();
+                        else
+                            was_closable.remove();
+                    }
                 }
             },
             close () {
