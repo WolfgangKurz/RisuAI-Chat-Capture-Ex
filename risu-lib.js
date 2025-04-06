@@ -94,7 +94,7 @@ const risuLib = {
         content.appendChild(document.createTextNode(message));
         box.append(content);
 
-        if (closable === undefined || !!closable) {
+        function generateCloseButton () {
             const close = document.createElement("button");
             close.appendChild(document.createTextNode("OK"));
 
@@ -107,6 +107,8 @@ const risuLib = {
             });
             box.appendChild(close);
         }
+        if (closable === undefined || !!closable)
+            generateCloseButton();
 
         wrapper.appendChild(box);
         backdrop.appendChild(wrapper);
@@ -114,6 +116,26 @@ const risuLib = {
 
         // Display wrapper at next frame
         requestAnimationFrame(() => (wrapper.style.opacity = 1));
+
+        return {
+            update (message, closable) {
+                content.innerHTML = ""; // simple clear
+                content.appendChild(document.createTextNode(message));
+
+                const was_closable = box.querySelector("button");
+                if (closable !== !!was_closable) {
+                    if (closable)
+                        generateCloseButton();
+                    else
+                        was_closable.remove();
+                }
+            },
+            close () {
+                wrapper.style.opacity = 0;
+                if (backdrop.children.length === 1) // Is this message only?
+                    backdrop.classList.remove(BACKDROP_DISP_CN); // Close backdrop also
+            },
+        };
     },
     clear () {
         backdrop.querySelectorAll(`.${MESSAGE_WRAP_CN}`).forEach(w => {
