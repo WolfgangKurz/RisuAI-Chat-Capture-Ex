@@ -3,7 +3,7 @@
 // https://github.com/WolfgangKurz
 
 const BACKDROP_CN = "risu-lib-message-backdrop";
-const BACKDROP_DISP_CN = "ribu-lib-message-display";
+const BACKDROP_DISP_CN = "risu-lib-message-display";
 const MESSAGE_WRAP_CN = "risu-lib-message-wrapper";
 const MESSAGE_CN = "risu-lib-message";
 const MESSAGE_CLOSE_CN = "risu-lib-message-close";
@@ -18,7 +18,7 @@ style.innerHTML = `
         height: 100%;
         background-color: rgba(0, 0, 0, 0.35);
         transition: opacity 0.28s ease;
-        z-index: 10;
+        z-index: 9999;
     }
     #${BACKDROP_CN}:not(.${BACKDROP_DISP_CN}) {
         opacity: 0 !important;
