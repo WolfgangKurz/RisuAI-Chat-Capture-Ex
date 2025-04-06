@@ -1,5 +1,5 @@
 //@name risu-chat-capture-ex
-//@display-name RisuAI Chat Capture Ex v20250406
+//@display-name RisuAI Chat Capture Ex v20250407
 //@author Wolfgang Kurz
 //@repository https://github.com/WolfgangKurz/RisuAI-Chat-Capture-Ex
 
@@ -15,10 +15,10 @@ fetch("https://raw.githubusercontent.com/WolfgangKurz/RisuAI-Chat-Capture-Ex/ref
     .then(r => r.text())
     .then(r => risuLib = eval(r));
 
-// MARK: html2canvas loader
-if (!window.html2canvas) {
+// MARK: htmlToImage loader
+if (!window.htmlToImage) {
     const script = document.createElement("script");
-    script.src = "https://html2canvas.hertzen.com/dist/html2canvas.min.js";
+    script.src = "https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.min.js";
     document.body.appendChild(script);
 }
 
@@ -73,24 +73,6 @@ body.capture-ex-capturing .default-chat-screen .risu-chat details:not(:open) > *
 body.capture-ex-capturing .default-chat-screen .risu-chat * {
     box-shadow: none !important; /* html2canvas not supporting box-shadow */
 }
-.capture_ex_proxy_image {
-    display: flex;
-}
-.capture_ex_proxy_image > div {
-    position: relative;
-    flex: 1;
-    overflow: hidden;
-}
-.capture_ex_proxy_image > div > img {
-    position: absolute;
-    object-fit: unset !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    max-width: none !important;
-    max-height: none !important;
-    min-width: none !important;
-    min-height: none !important;
-}
 `;
     document.body.appendChild(style);
     addOnUnload(() => style.remove());
@@ -135,10 +117,10 @@ function _confirm (message, y, n) {
 function i18n (k) {
     const loc = (() => {
         switch (k) {
-            case "html2canvas_notfound":
+            case "html-to-image_notfound":
                 return {
-                    en: "html2canvas library has not loaded!\nTry refresh page and retry.",
-                    ko: "html2canvas 라이브러리가 로드되지 않았습니다!\n새로고침 후 다시 시도해보세요.",
+                    en: "html-to-image library has not loaded!\nTry refresh page and retry.",
+                    ko: "html-to-image 라이브러리가 로드되지 않았습니다!\n새로고침 후 다시 시도해보세요.",
                 };
             case "point_starting_notset":
                 return {
@@ -185,7 +167,7 @@ function i18n (k) {
 let _capture_from = null;
 let _capture_to = null;
 function takeScreenshot () {
-    if (!window.html2canvas) return _alert(i18n("html2canvas_notfound"));
+    if (!window.htmlToImage) return _alert(i18n("html-to-image_notfound"));
 
     if (!_capture_from) return _alert(i18n("point_starting_notset"));
     if (!_capture_to) return _alert(i18n("point_ending_notset"));
@@ -228,86 +210,10 @@ function takeScreenshot () {
         progress(`Taking screenShot... 0/${count}`);
 
         const cvs = [];
-        const covers = [];
         for (let i = idxEnd; i <= idxStart; i++) { // column-reverse
-            // patch for object-fit image
-            const images = [...chats[i].querySelectorAll("img")].map(r => {
-                r.__previous_display = r.style.display;
-
-                const st = window.getComputedStyle(r);
-
-                const cover = document.createElement("var");
-                cover.className = "capture_ex_proxy_image";
-                cover.style.padding = st.padding;
-                cover.style.margin = st.margin;
-                cover.style.width = `${r.clientWidth}px`;
-                cover.style.height = `${r.clientHeight}px`;
-
-                covers.push(cover);
-
-                if ("chrome" in window) {
-                    cover.style.backgroundImage = `url(${r.src})`;
-
-                    if (st.objectFit === "cover" || st.objectFit === "contain")
-                        cover.style.backgroundSize = st.objectFit;
-                } else {
-                    const coverImgCont = document.createElement("div");
-                    cover.appendChild(coverImgCont);
-
-                    const coverImg = document.createElement("img");
-                    coverImg.src = r.src;
-                    coverImgCont.appendChild(coverImg);
-
-                    switch (st.objectFit) {
-                        case "cover": { // fit to object, scale-up
-                            const r1 = r.clientWidth / r.naturalWidth;
-                            const r2 = r.clientHeight / r.naturalHeight;
-                            const rt = Math.max(r1, r2);
-                            coverImg.style.width = `${r.naturalWidth * rt}px`;
-                            coverImg.style.height = `${r.naturalHeight * rt}px`;
-                            coverImg.style.top = `${(r.clientHeight - (r.naturalHeight * rt)) / 2}px`;
-                            coverImg.style.left = `${(r.clientWidth - (r.naturalWidth * rt)) / 2}px`;
-                            break;
-                        }
-                        case "contain": { // fit to object, scale-down
-                            const r1 = r.clientWidth / r.naturalWidth;
-                            const r2 = r.clientHeight / r.naturalHeight;
-                            const rt = Math.min(r1, r2);
-                            coverImg.style.width = `${r.naturalWidth * rt}px`;
-                            coverImg.style.height = `${r.naturalHeight * rt}px`;
-                            coverImg.style.top = `${(r.clientHeight - (r.naturalHeight * rt)) / 2}px`;
-                            coverImg.style.left = `${(r.clientWidth - (r.naturalWidth * rt)) / 2}px`;
-                            break;
-                        }
-                        default:
-                            coverImg.width = r.clientWidth;
-                            coverImg.height = r.clientHeight;
-                            break;
-                    }
-                }
-
-                if (r.nextElementSibling)
-                    r.parentNode.insertBefore(cover, r.nextElementSibling);
-                else
-                    r.parentNode.appendChild(cover);
-
-                r.style.display = "none";
-                return r;
-            });
-
-            const cv = await window.html2canvas(chats[i], {
-                foreignObjectRendering: false,
-                backgroundColor: bg,
-            });
+            const cv = await window.htmlToImage.toCanvas(chats[i], { backgroundColor: bg });
             cvs.push(cv);
             progress(`Taking screenShot... ${cvs.length}/${count}`);
-
-            // revert for object-fit image
-            images.forEach(r => {
-                r.style.display = r.__previous_display;
-                delete r.__previous_display;
-            });
-            covers.forEach(c => c.remove());
         }
         cvs.reverse();
 
