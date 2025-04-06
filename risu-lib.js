@@ -42,7 +42,8 @@ style.innerHTML = `
         text-align: center;
         font-weight: 500;
         font-size: 16px;
-        color: #2232429;
+        color: #232429;
+        box-shadow: 0 2px 7px rgba(0, 0, 0, 0.65);
     }
     #${BACKDROP_CN} .${MESSAGE_CN} > div {
         display: flex;
