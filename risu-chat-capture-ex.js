@@ -1,5 +1,5 @@
 //@name risu-chat-capture-ex
-//@display-name RisuAI Chat Capture Ex v20250331
+//@display-name RisuAI Chat Capture Ex v20250406
 //@author Wolfgang Kurz
 //@repository https://github.com/WolfgangKurz/RisuAI-Chat-Capture-Ex
 
@@ -9,6 +9,11 @@ const __addOnUnload_fns = [];
 const addOnUnload = (fn) => { // Stackable onUnload proxy
     __addOnUnload_fns.push(fn);
 };
+
+let risuLib = null;
+fetch("https://raw.githubusercontent.com/WolfgangKurz/RisuAI-Chat-Capture-Ex/refs/heads/master/risu-lib.js?_=" + Date.now())
+    .then(r => r.text())
+    .then(r => risuLib = eval(r));
 
 // MARK: html2canvas loader
 if (!window.html2canvas) {
@@ -26,7 +31,7 @@ if (!window.html2canvas) {
 
     const style = document.createElement("style");
     style.innerHTML = (/* for debug */ __DEBUG ? `
-.default-chat-screen .risu-chat .flexium.chat-width > div button {
+.default-chat-screen .risu-chat .capture-ex-buttonbox button {
     padding: 3px;
     border-radius: 4px;
     background-color: rgba(0, 0, 0, 0.3);
@@ -61,7 +66,7 @@ main > .flex-grow > .h-full.w-full:not(.absolute) {
     z-index: 5;
     pointer-events: none !important;
 }
-body.capture-ex-capturing .default-chat-screen .risu-chat .flexium.chat-width > div,
+body.capture-ex-capturing .default-chat-screen .risu-chat .capture-ex-buttonbox,
 body.capture-ex-capturing .default-chat-screen .risu-chat details:not(:open) > *:not(summary) {
     display: none;
 }
@@ -69,8 +74,22 @@ body.capture-ex-capturing .default-chat-screen .risu-chat * {
     box-shadow: none !important; /* html2canvas not supporting box-shadow */
 }
 .capture_ex_proxy_image {
-    display: block;
-    background-size: contain;
+    display: flex;
+}
+.capture_ex_proxy_image > div {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+}
+.capture_ex_proxy_image > div > img {
+    position: absolute;
+    object-fit: unset !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    min-width: none !important;
+    min-height: none !important;
 }
 `;
     document.body.appendChild(style);
@@ -85,28 +104,119 @@ function uuid () {
     const h = [3, 5, 7, 9];
     return [...arr].map((r, i) => r.toString(16).padStart(2, "0") + (h.includes(i) ? "-" : "")).join("");
 }
+function findElemWithAll (on, target, _with) {
+    return [...on.querySelectorAll(target)]
+        .filter(el => !!el.querySelector(_with));
+}
+function findElemWith (on, target, _with) {
+    return findElemWithAll(on, target, _with)[0] || null;
+}
+
+function _alert (message) {
+    if (risuLib && risuLib.alert)
+        risuLib.alert(message);
+    else
+        alert(message);
+}
+function _confirm (message, y, n) {
+    return new Promise(resolve => {
+        if (risuLib && risuLib.alert)
+            return risuLib.alert(message, {
+                buttons: [
+                    { text: y, callback: () => resolve(true) },
+                    { text: n, callback: () => resolve(false) },
+                ],
+            });
+        else
+            resolve(confirm(message));
+    });
+}
+
+function i18n (k) {
+    const loc = (() => {
+        switch (k) {
+            case "html2canvas_notfound":
+                return {
+                    en: "html2canvas library has not loaded!\nTry refresh page and retry.",
+                    ko: "html2canvas 라이브러리가 로드되지 않았습니다!\n새로고침 후 다시 시도해보세요.",
+                };
+            case "point_starting_notset":
+                return {
+                    en: "Should select the starting point of the capture range!",
+                    ko: "캡쳐할 채팅 범위의 시작 지점을 선택해야합니다!",
+                };
+            case "point_ending_notset":
+                return {
+                    en: "Should select the ending point of the capture range!",
+                    ko: "캡쳐할 채팅 범위의 끝 지점을 선택해야합니다!",
+                };
+            case "point_swap_confirm":
+                return {
+                    en: "The starting point must be before the end point.\nDo you want to swap them and continue capturing?",
+                    ko: "캡쳐할 채팅 범위의 시작은 끝보다 앞이어야 합니다.\n두 지점을 바꿔서 캡쳐를 시작하시겠습니까?",
+                };
+            case "point_swap_confirm_Y":
+                return {
+                    en: "Yes",
+                    ko: "예",
+                };
+            case "point_swap_confirm_N":
+                return {
+                    en: "No",
+                    ko: "아니오",
+                };
+            default:
+                return {};
+        }
+    })();
+
+    const langs = window.navigator.languages.map(r => {
+        const i = r.indexOf("-");
+        return (i >= 0 ? r.substring(0, i) : r).toLowerCase();
+    });
+    for (const lang of langs) {
+        if (lang in loc)
+            return loc[lang];
+    }
+    if ("en" in loc) return loc.en;
+    return k;
+}
 
 let _capture_from = null;
 let _capture_to = null;
 function takeScreenshot () {
-    if (!window.html2canvas) return alert("html2canvas not loaded!\nTry refresh page and retry.");
+    if (!window.html2canvas) return _alert(i18n("html2canvas_notfound"));
 
-    if (!_capture_from) return alert("Should select the starting point of the capture range!");
-    if (!_capture_to) return alert("Should select the ending point of the capture range!");
+    if (!_capture_from) return _alert(i18n("point_starting_notset"));
+    if (!_capture_to) return _alert(i18n("point_ending_notset"));
 
     const chats = [...document.querySelectorAll(".default-chat-screen .risu-chat")];
-    let idxStart = chats.indexOf(_capture_from);
-    let idxEnd = chats.indexOf(_capture_to);
-    if (idxStart < idxEnd) { // column-reverse
-        if (!confirm("The starting point must be before the end point.\nDo you want to swap them and continue capturing?"))
-            return;
 
-        const t = idxEnd;
-        idxEnd = idxStart;
-        idxStart = t;
+    let risuMessage = null;
+    function progress (message) {
+        if (risuMessage)
+            risuMessage.update(message, { closable: false });
+        else
+            risuMessage = risuLib.alert(message, { closable: false });
+        console.log(message);
     }
 
     async function proc () {
+        // check point swap
+        let idxStart = chats.indexOf(_capture_from);
+        let idxEnd = chats.indexOf(_capture_to);
+        if (idxStart < idxEnd) { // column-reverse
+            if (!await _confirm(
+                i18n("point_swap_confirm"),
+                i18n("point_swap_confirm_Y"),
+                i18n("point_swap_confirm_N"),
+            )) return;
+
+            const t = idxEnd;
+            idxEnd = idxStart;
+            idxStart = t;
+        }
+
         // Prepare (remove any styles)
         document.body.classList.add("capture-ex-capturing");
         _capture_from.classList.remove("capture-ex-from");
@@ -115,11 +225,11 @@ function takeScreenshot () {
         const bg = window.getComputedStyle(_capture_from).getPropertyValue("--risu-theme-bgcolor");
 
         const count = idxStart - idxEnd + 1;
-        console.log(`Taking screenShot... 0/${count}`);
+        progress(`Taking screenShot... 0/${count}`);
 
         const cvs = [];
+        const covers = [];
         for (let i = idxEnd; i <= idxStart; i++) { // column-reverse
-            debugger;
             // patch for object-fit image
             const images = [...chats[i].querySelectorAll("img")].map(r => {
                 r.__previous_display = r.style.display;
@@ -127,15 +237,46 @@ function takeScreenshot () {
                 const st = window.getComputedStyle(r);
 
                 const cover = document.createElement("var");
+                covers.push(cover);
                 cover.className = "capture_ex_proxy_image";
-                cover.style.backgroundImage = `url(${r.src})`;
                 cover.style.padding = st.padding;
                 cover.style.margin = st.margin;
                 cover.style.width = `${r.clientWidth}px`;
                 cover.style.height = `${r.clientHeight}px`;
 
-                if(st.objectFit === "cover" || st.objectFit === "contain")
-                    cover.style.backgroundSize = st.objectFit;
+                const coverImgCont = document.createElement("div");
+                cover.appendChild(coverImgCont);
+
+                const coverImg = document.createElement("img");
+                coverImg.src = r.src;
+                coverImgCont.appendChild(coverImg);
+
+                switch (st.objectFit) {
+                    case "cover": { // fit to object, scale-up
+                        const r1 = r.clientWidth / r.naturalWidth;
+                        const r2 = r.clientHeight / r.naturalHeight;
+                        const rt = Math.max(r1, r2);
+                        coverImg.style.width = `${r.naturalWidth * rt}px`;
+                        coverImg.style.height = `${r.naturalHeight * rt}px`;
+                        coverImg.style.top = `${(r.clientHeight - (r.naturalHeight * rt)) / 2}px`;
+                        coverImg.style.left = `${(r.clientWidth - (r.naturalWidth * rt)) / 2}px`;
+                        break;
+                    }
+                    case "contain": { // fit to object, scale-down
+                        const r1 = r.clientWidth / r.naturalWidth;
+                        const r2 = r.clientHeight / r.naturalHeight;
+                        const rt = Math.min(r1, r2);
+                        coverImg.style.width = `${r.naturalWidth * rt}px`;
+                        coverImg.style.height = `${r.naturalHeight * rt}px`;
+                        coverImg.style.top = `${(r.clientHeight - (r.naturalHeight * rt)) / 2}px`;
+                        coverImg.style.left = `${(r.clientWidth - (r.naturalWidth * rt)) / 2}px`;
+                        break;
+                    }
+                    default:
+                        coverImg.width = r.clientWidth;
+                        coverImg.height = r.clientHeight;
+                        break;
+                }
 
                 if (r.nextElementSibling)
                     r.parentNode.insertBefore(cover, r.nextElementSibling);
@@ -151,21 +292,18 @@ function takeScreenshot () {
                 backgroundColor: bg,
             });
             cvs.push(cv);
-            console.log(`Taking screenShot... ${cvs.length}/${count}`);
+            progress(`Taking screenShot... ${cvs.length}/${count}`);
 
             // revert for object-fit image
-            images.forEach(r => {
-                r.style.display = r.__previous_display;
-                delete r.__previous_display;
-
-                const el = r.previousElementSibling;
-                if (el && el.className.includes("capture_ex_proxy_image"))
-                    el.remove();
-            });
+            // images.forEach(r => {
+            //     r.style.display = r.__previous_display;
+            //     delete r.__previous_display;
+            // });
+            // covers.forEach(c => c.remove());
         }
         cvs.reverse();
 
-        console.log("Merging images...");
+        progress("Merging images...");
 
         const cv = document.createElement("canvas");
         cv.width = 0;
@@ -197,7 +335,10 @@ function takeScreenshot () {
 
             const a = document.createElement("a");
             a.href = u;
-            a.download = `chat-ex-${uuid()}.png`;
+            if (__DEBUG)
+                a.target = "_blank";
+            else
+                a.download = `chat-ex-${uuid()}.png`;
 
             document.body.appendChild(a);
             a.style.display = "none";
@@ -211,6 +352,9 @@ function takeScreenshot () {
         document.body.classList.remove("capture-ex-capturing");
         _capture_from.classList.add("capture-ex-from");
         _capture_to.classList.add("capture-ex-to");
+
+        if (risuMessage)
+            risuMessage.close();
     }
     proc();
 }
@@ -244,7 +388,10 @@ addOnUnload(() => {
 const _chat_line_injector = setInterval(() => {
     const chats = document.querySelectorAll(".default-chat-screen .risu-chat");
     chats.forEach(chat => {
-        const chat_buttons = chat.querySelector(".flexium.chat-width > div");
+        const chat_buttons = findElemWith(chat, ".flex-grow.flex.items-center.justify-end", ".text-xs:first-child");
+        if (!chat_buttons) return;
+
+        chat_buttons.classList.add("capture-ex-buttonbox");
 
         if (!chat_buttons.querySelector(".button-icon-capture_ex-from")) {
             const button_from = document.createElement("button");
@@ -289,4 +436,5 @@ addOnUnload(() => {
 
 onUnload(() => {
     __addOnUnload_fns.forEach(f => f());
+    if (risuLib) risuLib.unload();
 });
