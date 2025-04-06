@@ -6,6 +6,7 @@ const BACKDROP_CN = "risu-lib-message-backdrop";
 const BACKDROP_DISP_CN = "ribu-lib-message-display";
 const MESSAGE_WRAP_CN = "risu-lib-message-wrapper";
 const MESSAGE_CN = "risu-lib-message";
+const MESSAGE_CLOSE_CN = "risu-lib-message-close";
 
 const style = document.createElement("style");
 style.innerHTML = `
@@ -52,14 +53,20 @@ style.innerHTML = `
         justify-content: center;
         align-items: center;
     }
-    #${BACKDROP_CN} .${MESSAGE_CN} button {
+    #${BACKDROP_CN} .${MESSAGE_CN} > div + button {
         margin-top: 10px;
+    }
+    #${BACKDROP_CN} .${MESSAGE_CN} button {
+        margin: 2px;
         padding: 3px 12px;
         border-radius: 4px;
         background-color: #36383D;
         font-weight: 600;
         font-size: 16px;
         color: #fff;
+    }
+    #${BACKDROP_CN} .${MESSAGE_CN} button.${MESSAGE_CLOSE_CN} {
+        order: 999;
     }
 `;
 document.body.appendChild(style);
@@ -75,7 +82,11 @@ function flushBackdrop () {
 }
 
 const risuLib = {
-    alert (message, closable, callback) {
+    alert (message, opt) {
+        const o_closable = opt.closable || true;
+        const o_buttons = opt.buttons || [];
+        const o_callback = opt.callback;
+
         const wrapper = document.createElement("div");
         wrapper.classList.add(MESSAGE_WRAP_CN);
         wrapper.addEventListener("transitionend", e => {
@@ -83,7 +94,7 @@ const risuLib = {
             if (wrapper.style.opacity != 0) return;
 
             wrapper.remove();
-            if (callback) callback();
+            if (o_callback) callback();
 
             flushBackdrop();
         });
@@ -95,8 +106,20 @@ const risuLib = {
         content.appendChild(document.createTextNode(message));
         box.append(content);
 
+        if (Array.isArray(o_buttons))
+            o_buttons.forEach(b => {
+                const btn = document.createElement("button");
+                btn.appendChild(document.createTextNode(b.text || "Button"));
+                btn.addEventListener("click", e => {
+                    e.preventDefault();
+                    if (b.callback) b.callback();
+                });
+                box.append(btn);
+            });
+
         function generateCloseButton () {
             const close = document.createElement("button");
+            close.classList.add(MESSAGE_CLOSE_CN);
             close.appendChild(document.createTextNode("OK"));
 
             close.addEventListener("click", e => {
@@ -108,8 +131,7 @@ const risuLib = {
             });
             box.appendChild(close);
         }
-        if (closable === undefined || !!closable)
-            generateCloseButton();
+        if (o_closable) generateCloseButton();
 
         wrapper.appendChild(box);
         backdrop.appendChild(wrapper);
@@ -119,14 +141,31 @@ const risuLib = {
         requestAnimationFrame(() => (wrapper.style.opacity = 1));
 
         return {
-            update (message, closable) {
+            update (message, options) {
+                const o_closable = options.closable;
+                const o_buttons = options.buttons;
+
                 content.innerHTML = ""; // simple clear
                 content.appendChild(document.createTextNode(message));
 
-                if (closable !== undefined) {
-                    const was_closable = box.querySelector("button");
-                    if (closable !== !!was_closable) {
-                        if (closable)
+                if (o_buttons !== undefined) {
+                    box.querySelectorAll(`button:not(.${MESSAGE_CLOSE_CN})`).forEach(el => el.remove());
+                    if (Array.isArray(o_buttons))
+                        o_buttons.forEach(b => {
+                            const btn = document.createElement("button");
+                            btn.appendChild(document.createTextNode(b.text || "Button"));
+                            btn.addEventListener("click", e => {
+                                e.preventDefault();
+                                if (b.callback) b.callback();
+                            });
+                            box.append(btn);
+                        });
+                }
+
+                if (o_closable !== undefined) {
+                    const was_closable = box.querySelector(`.${MESSAGE_CLOSE_CN}`);
+                    if (o_closable !== !!was_closable) {
+                        if (o_closable)
                             generateCloseButton();
                         else
                             was_closable.remove();
