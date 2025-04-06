@@ -237,45 +237,53 @@ function takeScreenshot () {
                 const st = window.getComputedStyle(r);
 
                 const cover = document.createElement("var");
-                covers.push(cover);
                 cover.className = "capture_ex_proxy_image";
                 cover.style.padding = st.padding;
                 cover.style.margin = st.margin;
                 cover.style.width = `${r.clientWidth}px`;
                 cover.style.height = `${r.clientHeight}px`;
 
-                const coverImgCont = document.createElement("div");
-                cover.appendChild(coverImgCont);
+                covers.push(cover);
 
-                const coverImg = document.createElement("img");
-                coverImg.src = r.src;
-                coverImgCont.appendChild(coverImg);
+                if ("chrome" in window) {
+                    cover.style.backgroundImage = `url(${r.src})`;
 
-                switch (st.objectFit) {
-                    case "cover": { // fit to object, scale-up
-                        const r1 = r.clientWidth / r.naturalWidth;
-                        const r2 = r.clientHeight / r.naturalHeight;
-                        const rt = Math.max(r1, r2);
-                        coverImg.style.width = `${r.naturalWidth * rt}px`;
-                        coverImg.style.height = `${r.naturalHeight * rt}px`;
-                        coverImg.style.top = `${(r.clientHeight - (r.naturalHeight * rt)) / 2}px`;
-                        coverImg.style.left = `${(r.clientWidth - (r.naturalWidth * rt)) / 2}px`;
-                        break;
+                    if (st.objectFit === "cover" || st.objectFit === "contain")
+                        cover.style.backgroundSize = st.objectFit;
+                } else {
+                    const coverImgCont = document.createElement("div");
+                    cover.appendChild(coverImgCont);
+
+                    const coverImg = document.createElement("img");
+                    coverImg.src = r.src;
+                    coverImgCont.appendChild(coverImg);
+
+                    switch (st.objectFit) {
+                        case "cover": { // fit to object, scale-up
+                            const r1 = r.clientWidth / r.naturalWidth;
+                            const r2 = r.clientHeight / r.naturalHeight;
+                            const rt = Math.max(r1, r2);
+                            coverImg.style.width = `${r.naturalWidth * rt}px`;
+                            coverImg.style.height = `${r.naturalHeight * rt}px`;
+                            coverImg.style.top = `${(r.clientHeight - (r.naturalHeight * rt)) / 2}px`;
+                            coverImg.style.left = `${(r.clientWidth - (r.naturalWidth * rt)) / 2}px`;
+                            break;
+                        }
+                        case "contain": { // fit to object, scale-down
+                            const r1 = r.clientWidth / r.naturalWidth;
+                            const r2 = r.clientHeight / r.naturalHeight;
+                            const rt = Math.min(r1, r2);
+                            coverImg.style.width = `${r.naturalWidth * rt}px`;
+                            coverImg.style.height = `${r.naturalHeight * rt}px`;
+                            coverImg.style.top = `${(r.clientHeight - (r.naturalHeight * rt)) / 2}px`;
+                            coverImg.style.left = `${(r.clientWidth - (r.naturalWidth * rt)) / 2}px`;
+                            break;
+                        }
+                        default:
+                            coverImg.width = r.clientWidth;
+                            coverImg.height = r.clientHeight;
+                            break;
                     }
-                    case "contain": { // fit to object, scale-down
-                        const r1 = r.clientWidth / r.naturalWidth;
-                        const r2 = r.clientHeight / r.naturalHeight;
-                        const rt = Math.min(r1, r2);
-                        coverImg.style.width = `${r.naturalWidth * rt}px`;
-                        coverImg.style.height = `${r.naturalHeight * rt}px`;
-                        coverImg.style.top = `${(r.clientHeight - (r.naturalHeight * rt)) / 2}px`;
-                        coverImg.style.left = `${(r.clientWidth - (r.naturalWidth * rt)) / 2}px`;
-                        break;
-                    }
-                    default:
-                        coverImg.width = r.clientWidth;
-                        coverImg.height = r.clientHeight;
-                        break;
                 }
 
                 if (r.nextElementSibling)
